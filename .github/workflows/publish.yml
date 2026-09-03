@@ -15,12 +15,18 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "22"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      # actions/setup-node installs whatever npm ships bundled with this Node
+      # version, which can be older than what Trusted Publishing (OIDC) needs.
+      # Force a recent npm so the OIDC exchange during `npm publish` is supported.
+      - run: npm install -g npm@latest
+      - run: npm --version
 
       - run: npm ci
       - run: npm run typecheck
