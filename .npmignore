@@ -1,0 +1,29 @@
+# NOTE: package.json now has a "files" allowlist (["dist", "README.md"]),
+# which is what actually decides what ships in `npm publish` - this file
+# is mostly redundant now but kept as a backup/second line of defense.
+
+# tests
+src/test/
+*.test.ts
+*.test.tsx
+
+# Storybook - visualization only, not part of the published API
+.storybook/
+*.stories.ts
+*.stories.tsx
+storybook-static/
+
+# dev-only config (consumers use tailwind.preset.ts's compiled output instead)
+tailwind.config.ts
+postcss.config.js
+vitest.config.ts
+tsup.config.ts
+
+# source (we ship the compiled dist/ output, not raw TS)
+src/
+tailwind.preset.ts
+tsconfig.json
+
+node_modules/
+*.tsbuildinfo
+.DS_Store
