@@ -32,7 +32,14 @@ export function SelectableCard({ icon, title, subtitle, media, selected = false,
   if (media) {
     return (
       <button type="button" aria-pressed={selected} onClick={onClick} className={`overflow-hidden ${base}`}>
-        <div className="h-36 w-full overflow-hidden">{media}</div>
+        {/* isolate: media content (a Leaflet map, for one real case) can set
+            its own internal z-index values (Leaflet's panes go up to 700)
+            that otherwise escape this box and paint over unrelated page
+            content (e.g. a dropdown/popover elsewhere) once their
+            container isn't itself a stacking context - `isolate`
+            (isolation: isolate) contains them regardless of the exact
+            numeric values involved, no z-index juggling required. */}
+        <div className="isolate h-36 w-full overflow-hidden">{media}</div>
         <div className="flex items-center gap-3 p-4">
           {icon && (
             <span
