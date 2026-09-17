@@ -7,7 +7,7 @@
 // tier, not the shape of the file itself:
 //
 //   atoms/      - do not compose any other component in the library
-//                 (Avatar, Badge, Button, Card, ProgressBar, Snackbar)
+//                 (Avatar, Badge, Button, Card, Logo, ProgressBar, Snackbar)
 //   molecules/  - compose 1+ atoms, or are a simple self-contained control
 //                 (SegmentedTabs, NavItem, StatTile, DecisionFactorRow,
 //                  CompetitorRow, PriceRangeSlider, MiniMapCard,
@@ -27,6 +27,7 @@ export * from "./atoms/Avatar/Avatar";
 export * from "./atoms/Badge/Badge";
 export * from "./atoms/Button/Button";
 export * from "./atoms/Card/Card";
+export * from "./atoms/Logo/Logo";
 export * from "./atoms/ProgressBar/ProgressBar";
 export * from "./atoms/Snackbar/Snackbar";
 

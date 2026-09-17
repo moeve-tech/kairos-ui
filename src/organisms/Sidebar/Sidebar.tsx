@@ -22,7 +22,8 @@ export interface SidebarUser {
 }
 
 export interface SidebarProps {
-  brandName?: string;
+  /** String simple o un nodo enriquecido (ej. <Logo/> con su wordmark de dos tonos) - ambos se renderizan tal cual junto al ícono. */
+  brandName?: ReactNode;
   stations: SidebarStation[];
   selectedStationId: string;
   onSelectStation: (stationId: string) => void;
