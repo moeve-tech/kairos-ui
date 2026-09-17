@@ -27,4 +27,15 @@ describe("SelectableCard", () => {
     render(<SelectableCard title="Estación Norte" onClick={() => {}} />);
     expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false");
   });
+
+  it("renders the media slot above the text when given", () => {
+    render(<SelectableCard title="Estación Norte" media={<span data-testid="map">mapa</span>} onClick={() => {}} />);
+    expect(screen.getByTestId("map")).toBeInTheDocument();
+    expect(screen.getByText("Estación Norte")).toBeInTheDocument();
+  });
+
+  it("without media, does not render a media slot", () => {
+    const { container } = render(<SelectableCard title="Estación Norte" onClick={() => {}} />);
+    expect(container.querySelector(".h-36")).not.toBeInTheDocument();
+  });
 });
