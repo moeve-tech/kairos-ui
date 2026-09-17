@@ -10,7 +10,8 @@
 //                 (Avatar, Badge, Button, Card, ProgressBar, Snackbar)
 //   molecules/  - compose 1+ atoms, or are a simple self-contained control
 //                 (SegmentedTabs, NavItem, StatTile, DecisionFactorRow,
-//                  CompetitorRow, PriceRangeSlider, MiniMapCard)
+//                  CompetitorRow, PriceRangeSlider, MiniMapCard,
+//                  WeekdayPicker, SelectableCard, FileDropzone)
 //   organisms/  - compose molecule(s)/atom(s) into a full screen section
 //                 (Sidebar, TopBar, ConfirmDialog)
 //
@@ -37,6 +38,9 @@ export * from "./molecules/DecisionFactorRow/DecisionFactorRow";
 export * from "./molecules/CompetitorRow/CompetitorRow";
 export * from "./molecules/PriceRangeSlider/PriceRangeSlider";
 export * from "./molecules/MiniMapCard/MiniMapCard";
+export * from "./molecules/WeekdayPicker/WeekdayPicker";
+export * from "./molecules/SelectableCard/SelectableCard";
+export * from "./molecules/FileDropzone/FileDropzone";
 
 // organisms
 export * from "./organisms/Sidebar/Sidebar";
