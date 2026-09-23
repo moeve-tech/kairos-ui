@@ -73,6 +73,13 @@ describe("Sidebar", () => {
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
 
+  it("renders the logo chip by default and omits it with showLogoMark={false}", () => {
+    const { container, rerender } = render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Cliente", role: "Anunciante" }} />);
+    expect(container.querySelectorAll(".bg-brand-logo").length).toBe(1);
+    rerender(<Sidebar showLogoMark={false} navItems={[{ key: "pricing", label: "Pricing", icon: <span>ico</span> }]} user={{ name: "Cliente", role: "Anunciante" }} />);
+    expect(container.querySelectorAll(".bg-brand-logo").length).toBe(0);
+  });
+
   it("omits the station selector entirely when stations is not passed (e.g. a consumer with no station concept)", () => {
     render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Cliente", role: "Anunciante" }} />);
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();

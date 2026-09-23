@@ -24,6 +24,8 @@ export interface SidebarUser {
 export interface SidebarProps {
   /** String simple o un nodo enriquecido (ej. <Logo/> con su wordmark de dos tonos) - ambos se renderizan tal cual junto al ícono. */
   brandName?: ReactNode;
+  /** Opcional (default true): el chip con el rayo junto al nombre. Pasá false si el consumidor ya trae su propio wordmark y no quiere el ícono genérico. */
+  showLogoMark?: boolean;
   /**
    * Opcional: el selector de estación es un concepto de operador (gasolinero,
    * superadmin - "qué estación estoy administrando"), no universal. Omitilo
@@ -51,6 +53,7 @@ export interface SidebarProps {
  */
 export function Sidebar({
   brandName = "Redinamic",
+  showLogoMark = true,
   stations = [],
   selectedStationId = "",
   onSelectStation = () => {},
@@ -62,9 +65,11 @@ export function Sidebar({
     <aside className="fixed left-0 top-0 flex h-screen w-[260px] flex-col justify-between bg-brand-sidebar pb-2 pt-8">
       <div className="flex flex-col gap-6 px-4 pb-6">
         <div className="flex items-center gap-3 px-2">
-          <div className="flex size-8 items-center justify-center rounded bg-brand-logo">
-            <BoltIcon className="size-4 text-brand-sidebar" />
-          </div>
+          {showLogoMark && (
+            <div className="flex size-8 items-center justify-center rounded bg-brand-logo">
+              <BoltIcon className="size-4 text-brand-sidebar" />
+            </div>
+          )}
           <span className="text-2xl font-semibold tracking-tight text-white">{brandName}</span>
         </div>
 
