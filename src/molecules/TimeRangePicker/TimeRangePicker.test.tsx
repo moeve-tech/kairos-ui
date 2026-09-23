@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, within } from "@testing-library/react";
-import { TimeRangePicker, type TimeRangePickerProps } from "./TimeRangePicker";
+import { TimeRangePicker, type TimeRangeField, type TimeRangePickerProps, type TimeRangeValue } from "./TimeRangePicker";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -353,5 +354,194 @@ describe("TimeRangePicker - labels", () => {
     expect(within(screen.getByRole("listbox", { name: "Hours" })).getByRole("option", { name: "3 PM" })).toBeInTheDocument();
     fireEvent.click(endTrigger());
     expect(screen.getByRole("dialog", { name: "Seleccionar hora de fin" })).toBeInTheDocument(); // not overridden -> default
+  });
+});
+
+describe("TimeRangePicker - isTimeDisabled", () => {
+  const press = (key: string) => fireEvent.keyDown(document.activeElement as Element, { key });
+  const isOff = (el: HTMLElement) => el.getAttribute("aria-disabled") === "true";
+
+  it("disables a minute using the exact HH:MM of the hour already chosen", () => {
+    const { onChange } = setup({ endTime: "18:00", isTimeDisabled: (_f, hhmm) => hhmm === "09:30" });
+    fireEvent.click(startTrigger());
+    fireEvent.click(hourOpt("09"));
+    expect(minuteOpt("30")).toHaveAttribute("aria-disabled", "true");
+    expect(minuteOpt("30")).toHaveClass("opacity-40", "cursor-not-allowed");
+    expect(minuteOpt("35")).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(minuteOpt("30"));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(minuteOpt("30")).toHaveAttribute("aria-selected", "false"); // not even drafted
+    fireEvent.click(minuteOpt("35"));
+    expect(onChange).toHaveBeenCalledWith({ startTime: "09:35", endTime: "18:00" });
+  });
+
+  it("evaluates with the field, the candidate HH:MM and the confirmed value of both fields", () => {
+    const isTimeDisabled = vi.fn((_field: TimeRangeField, _hhmm: string, _current: TimeRangeValue) => false);
+    setup({ startTime: "08:00", endTime: "18:00", isTimeDisabled });
+    fireEvent.click(endTrigger());
+    fireEvent.click(hourOpt("20"));
+    expect(isTimeDisabled).toHaveBeenCalledWith("end", "20:30", { startTime: "08:00", endTime: "18:00" });
+    expect(isTimeDisabled).toHaveBeenCalledWith("end", "05:00", { startTime: "08:00", endTime: "18:00" }); // hour list probes
+    expect(isTimeDisabled.mock.calls.every(([field]) => field === "end")).toBe(true);
+    fireEvent.click(startTrigger());
+    expect(isTimeDisabled).toHaveBeenCalledWith("start", "09:00", { startTime: "08:00", endTime: "18:00" });
+  });
+
+  it("disables an hour only when ALL of its minutes are disabled", () => {
+    setup({ isTimeDisabled: (_f, hhmm) => hhmm.startsWith("10:") || hhmm === "11:30" });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("10")).toHaveAttribute("aria-disabled", "true");
+    expect(hourOpt("10")).toHaveClass("opacity-40");
+    expect(hourOpt("11")).not.toHaveAttribute("aria-disabled"); // only one minute is busy
+    expect(hourOpt("09")).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("a fully disabled hour cannot be picked: the draft and the minutes list stay as they were", () => {
+    setup({ isTimeDisabled: (_f, hhmm) => hhmm.startsWith("10:") });
+    fireEvent.click(startTrigger());
+    hourOpt("10").focus();
+    fireEvent.click(hourOpt("10"));
+    expect(hourOpt("10")).toHaveAttribute("aria-selected", "false");
+    expect(hourOpt("10")).toHaveFocus(); // focus was not sent to the minutes
+    fireEvent.click(minuteOpt("30")); // minute without hour: asks for the hour, no confirmation
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("respects minuteStep when deciding whether an hour is fully disabled", () => {
+    const busyGrid15 = (_f: "start" | "end", hhmm: string) => hhmm.startsWith("10:") && Number(hhmm.slice(3)) % 15 === 0;
+    const { unmount } = setup({ isTimeDisabled: busyGrid15, minuteStep: 15 });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("10")).toHaveAttribute("aria-disabled", "true"); // every listed minute (0,15,30,45) is busy
+    unmount();
+    setup({ isTimeDisabled: busyGrid15, minuteStep: 5 });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("10")).not.toHaveAttribute("aria-disabled"); // 10:05 is listed and free
+  });
+
+  it("takes the off-step current minute (12:43) into account for the hour", () => {
+    // Every 5-minute slot of 12:xx is busy but the current 12:43 is free -> hour 12 stays enabled...
+    const freeOnly43 = (_f: "start" | "end", hhmm: string) => hhmm.startsWith("12:") && hhmm !== "12:43";
+    const { unmount } = setup({ startTime: "12:43", endTime: "18:00", isTimeDisabled: freeOnly43 });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("12")).not.toHaveAttribute("aria-disabled");
+    unmount();
+    // ...and with nothing current, the same predicate disables it.
+    setup({ isTimeDisabled: freeOnly43 });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("12")).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("lets the app reject ends that cross a busy interval (end popover sees the chosen start)", () => {
+    setup({
+      startTime: "08:00",
+      endTime: "",
+      isTimeDisabled: (field, hhmm, current) => field === "end" && hhmm <= current.startTime,
+    });
+    fireEvent.click(endTrigger());
+    expect(hourOpt("07")).toHaveAttribute("aria-disabled", "true");
+    expect(hourOpt("08")).not.toHaveAttribute("aria-disabled"); // 08:05.. are still after the start
+    fireEvent.click(hourOpt("08"));
+    expect(minuteOpt("00")).toHaveAttribute("aria-disabled", "true");
+    expect(minuteOpt("05")).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("chaining from start to end hands the freshly confirmed start to the end predicate", () => {
+    function Controlled() {
+      const [range, setRange] = useState({ startTime: "", endTime: "" });
+      return (
+        <TimeRangePicker
+          {...range}
+          onChange={setRange}
+          isTimeDisabled={(field, hhmm, current) => field === "end" && hhmm <= current.startTime}
+        />
+      );
+    }
+    render(<Controlled />);
+    fireEvent.click(startTrigger());
+    fireEvent.click(hourOpt("09"));
+    fireEvent.click(minuteOpt("30"));
+    expect(screen.getByRole("dialog", { name: "Seleccionar hora de fin" })).toBeInTheDocument();
+    expect(hourOpt("08")).toHaveAttribute("aria-disabled", "true");
+    expect(hourOpt("09")).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(hourOpt("09"));
+    expect(minuteOpt("30")).toHaveAttribute("aria-disabled", "true");
+    expect(minuteOpt("35")).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("leaves minutes enabled while no hour is chosen (there is no exact HH:MM yet)", () => {
+    setup({ isTimeDisabled: () => true });
+    fireEvent.click(startTrigger());
+    expect(within(hours()).getAllByRole("option").every(isOff)).toBe(true);
+    expect(within(minutes()).getAllByRole("option").some(isOff)).toBe(false);
+  });
+
+  it("arrows skip disabled options and stay put when nothing is reachable", () => {
+    setup({ startTime: "09:00", endTime: "18:00", isTimeDisabled: (_f, hhmm) => hhmm.startsWith("10:") || hhmm.startsWith("11:") });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("09")).toHaveFocus();
+    press("ArrowDown"); // 10 and 11 disabled -> 12
+    expect(hourOpt("12")).toHaveFocus();
+    press("ArrowUp");
+    expect(hourOpt("09")).toHaveFocus();
+  });
+
+  it("Home/End go to the first/last enabled option", () => {
+    setup({
+      startTime: "09:00",
+      endTime: "18:00",
+      isTimeDisabled: (_f, hhmm) => hhmm < "02:00" || hhmm >= "23:00",
+    });
+    fireEvent.click(startTrigger());
+    press("Home");
+    expect(hourOpt("02")).toHaveFocus();
+    press("ArrowUp");
+    expect(hourOpt("02")).toHaveFocus();
+    press("End");
+    expect(hourOpt("22")).toHaveFocus();
+    press("ArrowDown");
+    expect(hourOpt("22")).toHaveFocus();
+  });
+
+  it("skips disabled minutes with the keyboard too", () => {
+    setup({ startTime: "09:00", endTime: "18:00", isTimeDisabled: (_f, hhmm) => hhmm === "09:05" || hhmm === "09:10" });
+    fireEvent.click(startTrigger());
+    fireEvent.click(hourOpt("09"));
+    expect(minuteOpt("00")).toHaveFocus();
+    press("ArrowDown");
+    expect(minuteOpt("15")).toHaveFocus();
+  });
+
+  it("a disabled option is never the tab stop, and never receives the initial focus", () => {
+    setup({ isTimeDisabled: (_f, hhmm) => hhmm.startsWith("00:") });
+    fireEvent.click(startTrigger());
+    expect(hourOpt("00")).toHaveAttribute("tabindex", "-1");
+    expect(hourOpt("01")).toHaveAttribute("tabindex", "0");
+    expect(hourOpt("01")).toHaveFocus();
+  });
+
+  it("keeps showing a confirmed value the predicate now rejects as selected, but it cannot be re-picked", () => {
+    const { onChange } = setup({ startTime: "09:30", endTime: "18:00", isTimeDisabled: (_f, hhmm) => hhmm.startsWith("09:") });
+    fireEvent.click(startTrigger());
+    expect(startTrigger()).toHaveTextContent("09:30");
+    expect(hourOpt("09")).toHaveAttribute("aria-selected", "true");
+    expect(hourOpt("09")).toHaveAttribute("aria-disabled", "true");
+    expect(hourOpt("09")).toHaveClass("bg-brand-primary", "text-white");
+    expect(hourOpt("09")).not.toHaveClass("opacity-40");
+    expect(minuteOpt("30")).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(hourOpt("09"));
+    fireEvent.click(minuteOpt("30"));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    // opening/closing never rewrote the value
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(startTrigger()).toHaveTextContent("09:30");
+  });
+
+  it("without the prop nothing is disabled", () => {
+    setup({ startTime: "09:30" });
+    fireEvent.click(startTrigger());
+    const all = [...within(hours()).getAllByRole("option"), ...within(minutes()).getAllByRole("option")];
+    expect(all.some(isOff)).toBe(false);
   });
 });

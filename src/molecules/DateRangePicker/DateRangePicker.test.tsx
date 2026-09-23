@@ -419,3 +419,258 @@ describe("DateRangePicker - clear and labels", () => {
     expect(screen.getByRole("button", { name: "Clear" })).toBeInTheDocument();
   });
 });
+
+describe("DateRangePicker - unavailable days (isDateDisabled)", () => {
+  it("disables and dims the flagged days, and they cannot be selected", () => {
+    const { onChange } = setup({ isDateDisabled: (iso) => iso === "2026-11-14" });
+    openPicker();
+    expect(day("2026-11-14")).toBeDisabled();
+    expect(day("2026-11-14")).toHaveClass("opacity-40", "cursor-not-allowed");
+    expect(day("2026-11-13")).toBeEnabled();
+    clickDay("2026-11-14");
+    clickDay("2026-11-12");
+    clickDay("2026-11-14");
+    expect(onChange).not.toHaveBeenCalled();
+    clickDay("2026-11-13");
+    expect(onChange).toHaveBeenCalledWith({ startDate: "2026-11-12", endDate: "2026-11-13" });
+  });
+
+  it("combines with min and max", () => {
+    setup({ min: "2026-11-12", max: "2026-11-20", isDateDisabled: (iso) => iso === "2026-11-15" });
+    openPicker();
+    expect(day("2026-11-11")).toBeDisabled(); // min
+    expect(day("2026-11-15")).toBeDisabled(); // predicate
+    expect(day("2026-11-21")).toBeDisabled(); // max
+    expect(day("2026-11-16")).toBeEnabled();
+  });
+
+  it("calls the predicate with ISO strings", () => {
+    const isDateDisabled = vi.fn(() => false);
+    setup({ isDateDisabled });
+    openPicker();
+    expect(isDateDisabled).toHaveBeenCalledWith("2026-11-10");
+    for (const [iso] of isDateDisabled.mock.calls as unknown as string[][]) expect(iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("never focuses a disabled day on open (today flagged -> another enabled day is the tab stop)", () => {
+    setup({ isDateDisabled: (iso) => iso === "2026-11-10" });
+    openPicker();
+    expect(day("2026-11-10")).toBeDisabled();
+    expect(day("2026-11-10")).not.toHaveFocus();
+    expect(document.activeElement).toBe(day("2026-11-01"));
+  });
+
+  it("does not validate the confirmed range from props: edges stay selected, days between are dimmed", () => {
+    const { onChange } = setup({
+      startDate: "2026-11-12",
+      endDate: "2026-11-16",
+      isDateDisabled: (iso) => iso >= "2026-11-12" && iso <= "2026-11-16",
+    });
+    openPicker();
+    expect(onChange).not.toHaveBeenCalled();
+    expect(day("2026-11-12")).toHaveAttribute("aria-pressed", "true");
+    expect(day("2026-11-12")).toHaveClass("bg-brand-primary", "text-white");
+    expect(day("2026-11-12")).not.toHaveClass("opacity-40");
+    expect(day("2026-11-16")).toHaveClass("bg-brand-primary");
+    expect(day("2026-11-14")).toHaveClass("opacity-40");
+    expect(day("2026-11-14").parentElement).toHaveClass("bg-brand-primary/10");
+  });
+});
+
+describe("DateRangePicker - partially unavailable days (isDatePartial)", () => {
+  it("shows a dot and adds the label to the accessible name, keeping the day selectable", () => {
+    const { onChange } = setup({ isDatePartial: (iso) => iso === "2026-11-14" });
+    openPicker();
+    const partial = screen.getByRole("button", { name: "sábado 14 de noviembre de 2026, parcialmente ocupado" });
+    expect(partial).toBe(day("2026-11-14"));
+    expect(partial).toBeEnabled();
+    expect(partial.querySelector("span.rounded-full")).toBeInTheDocument();
+    expect(day("2026-11-13").querySelector("span.rounded-full")).toBeNull();
+    expect(screen.getByRole("button", { name: "viernes 13 de noviembre de 2026" })).toBeInTheDocument();
+
+    clickDay("2026-11-12");
+    clickDay("2026-11-14");
+    expect(onChange).toHaveBeenCalledWith({ startDate: "2026-11-12", endDate: "2026-11-14" });
+  });
+
+  it("lets the caller override the label", () => {
+    setup({ isDatePartial: (iso) => iso === "2026-11-14", labels: { partialDay: "partly booked" } });
+    openPicker();
+    expect(screen.getByRole("button", { name: "sábado 14 de noviembre de 2026, partly booked" })).toBeInTheDocument();
+  });
+
+  it("uses a white dot on a selected edge and no dot on a disabled day", () => {
+    setup({
+      startDate: "2026-11-14",
+      endDate: "2026-11-18",
+      isDatePartial: () => true,
+      isDateDisabled: (iso) => iso === "2026-11-20",
+    });
+    openPicker();
+    expect(day("2026-11-14").querySelector("span.rounded-full")).toHaveClass("bg-white");
+    expect(day("2026-11-16").querySelector("span.rounded-full")).toHaveClass("bg-brand-primary");
+    expect(day("2026-11-20").querySelector("span.rounded-full")).toBeNull();
+    expect(day("2026-11-20")).not.toHaveAccessibleName(/parcialmente/);
+  });
+});
+
+describe("DateRangePicker - allowRangeOverDisabled", () => {
+  const busy = (...days: string[]) => (iso: string) => days.includes(iso);
+
+  it("by default, after choosing the start, days past the first disabled day are disabled too", () => {
+    const { onChange } = setup({ isDateDisabled: busy("2026-11-18") });
+    openPicker();
+    expect(day("2026-11-19")).toBeEnabled(); // before choosing a start, nothing extra is blocked
+    clickDay("2026-11-12");
+    expect(day("2026-11-17")).toBeEnabled();
+    expect(day("2026-11-18")).toBeDisabled();
+    expect(day("2026-11-19")).toBeDisabled();
+    expect(day("2026-11-19")).toHaveClass("opacity-40");
+    expect(day("2026-12-05")).toBeDisabled(); // the second visible month too
+    clickDay("2026-11-19");
+    expect(onChange).not.toHaveBeenCalled();
+    clickDay("2026-11-17");
+    expect(onChange).toHaveBeenCalledWith({ startDate: "2026-11-12", endDate: "2026-11-17" });
+  });
+
+  it("days before the start stay selectable (they restart the range)", () => {
+    setup({ isDateDisabled: busy("2026-11-18") });
+    openPicker();
+    clickDay("2026-11-12");
+    expect(day("2026-11-11")).toBeEnabled();
+    expect(day("2026-11-01")).toBeEnabled();
+  });
+
+  it("a disabled day BEFORE the start does not affect anything", () => {
+    const { onChange } = setup({ isDateDisabled: busy("2026-11-08") });
+    openPicker();
+    clickDay("2026-11-12");
+    expect(day("2026-11-13")).toBeEnabled();
+    expect(day("2026-12-20")).toBeEnabled();
+    clickDay("2026-12-20");
+    expect(onChange).toHaveBeenCalledWith({ startDate: "2026-11-12", endDate: "2026-12-20" });
+  });
+
+  it("recomputes the limit when an earlier click restarts the range", () => {
+    setup({ isDateDisabled: busy("2026-11-08", "2026-11-18") });
+    openPicker();
+    clickDay("2026-11-12");
+    clickDay("2026-11-09"); // earlier -> new start; the busy 8th is now BEFORE the start
+    expect(day("2026-11-09")).toHaveAttribute("aria-pressed", "true");
+    expect(day("2026-11-17")).toBeEnabled();
+    expect(day("2026-11-19")).toBeDisabled();
+    clickDay("2026-11-05"); // restart earlier than the busy day
+    expect(day("2026-11-07")).toBeEnabled();
+    expect(day("2026-11-09")).toBeDisabled(); // past the busy 8th
+    expect(day("2026-11-12")).toBeDisabled();
+  });
+
+  it("blocks days across the month boundary when the first disabled day is in the next month", () => {
+    setup({ isDateDisabled: busy("2026-12-03") });
+    openPicker();
+    clickDay("2026-11-28");
+    expect(day("2026-12-02")).toBeEnabled();
+    expect(day("2026-12-04")).toBeDisabled();
+  });
+
+  it("does not let the confirmed range in props influence the blocking", () => {
+    setup({ startDate: "2026-11-12", endDate: "2026-11-25", isDateDisabled: busy("2026-11-18") });
+    openPicker();
+    expect(day("2026-11-25")).toHaveAttribute("aria-pressed", "true");
+    expect(day("2026-11-22")).toBeEnabled(); // no pending start yet -> nothing extra blocked
+  });
+
+  it("allowRangeOverDisabled lets the range cross a disabled day (current behaviour)", () => {
+    const { onChange } = setup({ isDateDisabled: busy("2026-11-18"), allowRangeOverDisabled: true });
+    openPicker();
+    clickDay("2026-11-12");
+    expect(day("2026-11-18")).toBeDisabled(); // itself still not pickable
+    expect(day("2026-11-19")).toBeEnabled();
+    clickDay("2026-11-19");
+    expect(onChange).toHaveBeenCalledWith({ startDate: "2026-11-12", endDate: "2026-11-19" });
+  });
+
+  it("hover preview never covers a blocked day", () => {
+    setup({ isDateDisabled: busy("2026-11-18") });
+    openPicker();
+    clickDay("2026-11-12");
+    fireEvent.mouseEnter(day("2026-11-17"));
+    expect(day("2026-11-15").parentElement).toHaveClass("bg-brand-primary/10");
+    fireEvent.mouseEnter(day("2026-11-19")); // blocked: hovering it must not extend the preview
+    expect(day("2026-11-19")).not.toHaveClass("bg-brand-primary");
+  });
+
+  it("with the override on, hovering past a disabled day previews the whole span", () => {
+    setup({ isDateDisabled: busy("2026-11-18"), allowRangeOverDisabled: true });
+    openPicker();
+    clickDay("2026-11-12");
+    fireEvent.mouseEnter(day("2026-11-20"));
+    expect(day("2026-11-15").parentElement).toHaveClass("bg-brand-primary/10");
+    expect(day("2026-11-20")).toHaveClass("bg-brand-primary");
+  });
+});
+
+describe("DateRangePicker - keyboard with unavailable days", () => {
+  const press = (key: string) => fireEvent.keyDown(document.activeElement as Element, { key });
+  const busy = (...days: string[]) => (iso: string) => days.includes(iso);
+
+  it("arrows skip flagged days instead of getting stuck", () => {
+    setup({ isDateDisabled: busy("2026-11-11", "2026-11-17") });
+    openPicker(); // focus on today, the 10th
+    press("ArrowRight");
+    expect(day("2026-11-12")).toHaveFocus();
+    press("ArrowLeft");
+    expect(day("2026-11-10")).toHaveFocus();
+    press("ArrowDown"); // the 17th is flagged -> 24th
+    expect(day("2026-11-24")).toHaveFocus();
+  });
+
+  it("Home/End skip flagged edges of the week", () => {
+    setup({ isDateDisabled: busy("2026-11-09", "2026-11-15") });
+    openPicker();
+    press("Home");
+    expect(day("2026-11-10")).toHaveFocus(); // Monday 9th flagged, Tuesday is the first enabled
+    press("End");
+    expect(day("2026-11-14")).toHaveFocus();
+  });
+
+  it("never lands on days blocked by the range rule", () => {
+    setup({ isDateDisabled: busy("2026-11-14") });
+    openPicker();
+    fireEvent.click(document.activeElement as Element); // start = 10th
+    press("ArrowRight");
+    press("ArrowRight");
+    press("ArrowRight");
+    expect(day("2026-11-13")).toHaveFocus();
+    press("ArrowRight"); // 14th flagged, everything after it blocked: focus stays
+    expect(day("2026-11-13")).toHaveFocus();
+    press("ArrowDown"); // 20th blocked
+    press("PageDown"); // Dec 13 blocked
+    expect(day("2026-11-13")).toHaveFocus();
+    press("ArrowLeft"); // going back is fine
+    expect(day("2026-11-12")).toHaveFocus();
+  });
+
+  it("judges targets in months that are not on screen against the range rule", () => {
+    setup({ isDateDisabled: busy("2027-01-05") });
+    openPicker(); // shows Nov + Dec 2026
+    fireEvent.click(document.activeElement as Element); // start = Nov 10
+    press("PageDown");
+    expect(day("2026-12-10")).toHaveFocus();
+    press("PageDown"); // Jan 10 2027 is not on screen and lies past the busy Jan 5: blocked, view does not move
+    expect(day("2026-12-10")).toHaveFocus();
+    expect(screen.queryByRole("group", { name: "enero 2027" })).not.toBeInTheDocument();
+  });
+
+  it("with allowRangeOverDisabled, arrows step over the flagged day", () => {
+    setup({ isDateDisabled: busy("2026-11-14"), allowRangeOverDisabled: true });
+    openPicker();
+    fireEvent.click(document.activeElement as Element);
+    press("ArrowRight");
+    press("ArrowRight");
+    press("ArrowRight");
+    expect(day("2026-11-13")).toHaveFocus();
+    press("ArrowRight");
+    expect(day("2026-11-15")).toHaveFocus();
+  });
+});

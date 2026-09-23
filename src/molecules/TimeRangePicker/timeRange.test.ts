@@ -7,6 +7,7 @@ import {
   hourOptions,
   minuteOptions,
   moveIndex,
+  moveIndexSkipping,
   normalizeMinuteStep,
   parseTime,
   to12Hour,
@@ -194,5 +195,39 @@ describe("applyPick / draftToValue", () => {
     expect(draftToValue({ hour: 9, minute: null })).toBeNull();
     expect(draftToValue({ hour: null, minute: 0 })).toBeNull();
     expect(draftToValue({ hour: 9, minute: 5 })).toBe("09:05");
+  });
+});
+
+describe("moveIndexSkipping", () => {
+  const off = (...idx: number[]) => (i: number) => idx.includes(i);
+
+  it("behaves like moveIndex when nothing is disabled", () => {
+    for (const key of ["ArrowUp", "ArrowDown", "Home", "End"]) {
+      expect(moveIndexSkipping(4, 10, key, () => false)).toBe(moveIndex(4, 10, key));
+    }
+  });
+
+  it("jumps over disabled options in the direction of travel", () => {
+    expect(moveIndexSkipping(3, 10, "ArrowDown", off(4))).toBe(5);
+    expect(moveIndexSkipping(3, 10, "ArrowDown", off(4, 5, 6))).toBe(7);
+    expect(moveIndexSkipping(5, 10, "ArrowUp", off(4, 3))).toBe(2);
+  });
+
+  it("stays put (null) when there is no enabled option that way", () => {
+    expect(moveIndexSkipping(7, 10, "ArrowDown", off(8, 9))).toBeNull();
+    expect(moveIndexSkipping(2, 10, "ArrowUp", off(0, 1))).toBeNull();
+    expect(moveIndexSkipping(9, 10, "ArrowDown", () => false)).toBeNull();
+    expect(moveIndexSkipping(0, 10, "ArrowUp", () => false)).toBeNull();
+  });
+
+  it("Home/End go to the first/last ENABLED option", () => {
+    expect(moveIndexSkipping(5, 10, "Home", off(0, 1))).toBe(2);
+    expect(moveIndexSkipping(5, 10, "End", off(9))).toBe(8);
+    expect(moveIndexSkipping(5, 10, "Home", () => true)).toBeNull();
+  });
+
+  it("returns null for other keys or an empty list", () => {
+    expect(moveIndexSkipping(3, 10, "a", () => false)).toBeNull();
+    expect(moveIndexSkipping(0, 0, "ArrowDown", () => false)).toBeNull();
   });
 });

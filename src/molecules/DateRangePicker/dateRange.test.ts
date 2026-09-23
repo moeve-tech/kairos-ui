@@ -8,11 +8,13 @@ import {
   compareISO,
   daysInMonth,
   firstDayOfMonth,
+  firstDisabledAfter,
   formatDayAriaLabel,
   formatDisplayDate,
   isDayDisabled,
   isInRange,
   keyboardTarget,
+  keyboardTargetSkippingDisabled,
   lastDayOfMonth,
   monthOf,
   orderRange,
@@ -341,5 +343,73 @@ describe("keyboardTarget", () => {
   it("returns null for other keys", () => {
     expect(keyboardTarget("2026-11-12", "a")).toBeNull();
     expect(keyboardTarget("2026-11-12", "Enter")).toBeNull();
+  });
+});
+
+describe("firstDisabledAfter", () => {
+  const disabledSet = (...days: string[]) => (d: string) => days.includes(d);
+
+  it("finds the first disabled day after the start, ignoring the start itself and earlier days", () => {
+    const isDisabled = disabledSet("2026-11-05", "2026-11-12", "2026-11-18", "2026-11-25");
+    expect(firstDisabledAfter("2026-11-12", "2026-12-31", isDisabled)).toBe("2026-11-18");
+    expect(firstDisabledAfter("2026-11-06", "2026-12-31", isDisabled)).toBe("2026-11-12");
+  });
+
+  it("returns null when nothing is disabled within reach", () => {
+    expect(firstDisabledAfter("2026-11-12", "2026-11-30", disabledSet("2026-12-02"))).toBeNull();
+    expect(firstDisabledAfter("2026-11-12", "2026-11-12", disabledSet("2026-11-13"))).toBeNull();
+  });
+
+  it("treats `until` as inclusive and crosses month/year boundaries", () => {
+    expect(firstDisabledAfter("2026-11-12", "2026-11-13", disabledSet("2026-11-13"))).toBe("2026-11-13");
+    expect(firstDisabledAfter("2026-12-30", "2027-01-31", disabledSet("2027-01-02"))).toBe("2027-01-02");
+  });
+
+  it("returns null when the start is already at or past `until`", () => {
+    expect(firstDisabledAfter("2026-11-20", "2026-11-10", () => true)).toBeNull();
+  });
+});
+
+describe("keyboardTargetSkippingDisabled", () => {
+  const blocked = (...days: string[]) => (d: string) => days.includes(d);
+
+  it("behaves like keyboardTarget when nothing is disabled", () => {
+    for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]) {
+      expect(keyboardTargetSkippingDisabled("2026-11-12", key, () => false)).toBe(keyboardTarget("2026-11-12", key));
+    }
+  });
+
+  it("returns null for other keys", () => {
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "a", () => false)).toBeNull();
+  });
+
+  it("skips disabled days in the direction of travel", () => {
+    expect(keyboardTargetSkippingDisabled("2026-11-10", "ArrowRight", blocked("2026-11-11"))).toBe("2026-11-12");
+    expect(keyboardTargetSkippingDisabled("2026-11-10", "ArrowRight", blocked("2026-11-11", "2026-11-12"))).toBe("2026-11-13");
+    expect(keyboardTargetSkippingDisabled("2026-11-10", "ArrowLeft", blocked("2026-11-09"))).toBe("2026-11-08");
+    expect(keyboardTargetSkippingDisabled("2026-11-10", "ArrowDown", blocked("2026-11-17"))).toBe("2026-11-24");
+    expect(keyboardTargetSkippingDisabled("2026-11-10", "ArrowUp", blocked("2026-11-03"))).toBe("2026-10-27");
+  });
+
+  it("skips across a month boundary", () => {
+    expect(keyboardTargetSkippingDisabled("2026-11-29", "ArrowRight", blocked("2026-11-30", "2026-12-01"))).toBe("2026-12-02");
+  });
+
+  it("Home searches forward and End backward, inside the week", () => {
+    // Week of Thu 2026-11-12: Mon 09 .. Sun 15
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "Home", blocked("2026-11-09", "2026-11-10"))).toBe("2026-11-11");
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "End", blocked("2026-11-15"))).toBe("2026-11-14");
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "Home", blocked("2026-11-09", "2026-11-10", "2026-11-11"))).toBe("2026-11-12");
+  });
+
+  it("PageDown/PageUp land on the nearest enabled day after the same-day-of-month target", () => {
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "PageDown", blocked("2026-12-12"))).toBe("2026-12-13");
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "PageUp", blocked("2026-10-12"))).toBe("2026-10-11");
+  });
+
+  it("returns null when every day in reach is disabled", () => {
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "ArrowRight", () => true)).toBeNull();
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "Home", () => true)).toBeNull();
+    expect(keyboardTargetSkippingDisabled("2026-11-12", "ArrowRight", (d) => d > "2026-11-12")).toBeNull();
   });
 });

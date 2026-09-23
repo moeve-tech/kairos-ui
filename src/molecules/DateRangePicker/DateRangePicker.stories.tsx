@@ -75,3 +75,29 @@ export const Mobile: Story = {
   render: () => <Controlled initial={{ startDate: "2026-11-12", endDate: "2026-11-20" }} />,
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
+
+/**
+ * The app decides what is unavailable: 14-16 are booked (disabled) and 20 is only partly booked
+ * (dot, still selectable). By default a range cannot cross a booked day: pick a start on the 12th
+ * and everything after the 14th dims. Days before the start stay selectable.
+ */
+export const WithUnavailableDays: Story = {
+  render: () => (
+    <Controlled
+      isDateDisabled={(iso) => iso >= "2026-11-14" && iso <= "2026-11-16"}
+      isDatePartial={(iso) => iso === "2026-11-20"}
+      initial={{ startDate: "2026-11-02", endDate: "2026-11-05" }}
+    />
+  ),
+};
+
+/** Same data, but the range may cross the booked days (allowRangeOverDisabled). */
+export const RangeMayCrossUnavailableDays: Story = {
+  render: () => (
+    <Controlled
+      allowRangeOverDisabled
+      isDateDisabled={(iso) => iso >= "2026-11-14" && iso <= "2026-11-16"}
+      isDatePartial={(iso) => iso === "2026-11-20"}
+    />
+  ),
+};

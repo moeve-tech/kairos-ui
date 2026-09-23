@@ -131,3 +131,34 @@ export function applyPick(draft: TimeDraft, column: TimeColumn, value: number): 
 export function draftToValue(draft: TimeDraft): string | null {
   return draft.hour === null || draft.minute === null ? null : formatTime(draft.hour, draft.minute);
 }
+
+/**
+ * Like `moveIndex`, but only lands on enabled options. Up/Down go to the
+ * nearest enabled option in that direction, Home/End to the first/last
+ * enabled one. Null when the key is not handled or there is nowhere to go
+ * (the focus then stays put).
+ */
+export function moveIndexSkipping(
+  index: number,
+  length: number,
+  key: string,
+  isDisabledAt: (index: number) => boolean,
+): number | null {
+  if (length <= 0) return null;
+  const search = (from: number, step: 1 | -1): number | null => {
+    for (let i = from; i >= 0 && i < length; i += step) if (!isDisabledAt(i)) return i;
+    return null;
+  };
+  switch (key) {
+    case "ArrowUp":
+      return search(index - 1, -1);
+    case "ArrowDown":
+      return search(index + 1, 1);
+    case "Home":
+      return search(0, 1);
+    case "End":
+      return search(length - 1, -1);
+    default:
+      return null;
+  }
+}

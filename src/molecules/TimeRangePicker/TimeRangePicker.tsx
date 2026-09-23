@@ -3,9 +3,10 @@ import {
   applyPick,
   draftToValue,
   formatDisplayTime,
+  formatTime,
   hourOptions,
   minuteOptions,
-  moveIndex,
+  moveIndexSkipping,
   normalizeMinuteStep,
   parseTime,
   type TimeColumn,
@@ -20,6 +21,9 @@ export interface TimeRangeValue {
 }
 
 /** Every user-visible string of the picker. Defaults are Spanish; override any subset via `labels`. */
+/** Which of the two fields an option belongs to. */
+export type TimeRangeField = "start" | "end";
+
 export interface TimeRangePickerLabels {
   /** Accessible name of the hours list. */
   hours: string;
@@ -50,6 +54,18 @@ export interface TimeRangePickerProps {
   /** Shown in a field that has no time yet. */
   placeholder?: string;
   labels?: Partial<TimeRangePickerLabels>;
+  /**
+   * Marks options as unavailable (aria-disabled, dimmed, not selectable and
+   * skipped by the arrow keys). Called for every minute option with the exact
+   * "HH:MM" (using the hour already chosen in the draft; while no hour is
+   * chosen, minutes are left enabled), and for every hour option, which is
+   * disabled only when ALL of its minutes (the current list: `minuteStep` plus
+   * an off-step current value) are disabled. `current` is the confirmed value
+   * of both fields - for the end popover, `current.startTime` is the start
+   * already chosen, so the app can reject ends that cross a busy interval.
+   * A confirmed value that the predicate now rejects stays shown as selected.
+   */
+  isTimeDisabled?: (field: TimeRangeField, hhmm: string, current: TimeRangeValue) => boolean;
   className?: string;
 }
 
@@ -62,7 +78,7 @@ const DEFAULT_LABELS: TimeRangePickerLabels = {
   pm: "pm",
 };
 
-type Field = "start" | "end";
+type Field = TimeRangeField;
 
 const EMPTY_DRAFT: TimeDraft = { hour: null, minute: null };
 
@@ -103,6 +119,7 @@ export function TimeRangePicker({
   endLabel = "Hora fin",
   placeholder = "Selecciona",
   labels,
+  isTimeDisabled,
   className = "",
 }: TimeRangePickerProps) {
   const l: TimeRangePickerLabels = { ...DEFAULT_LABELS, ...labels };
@@ -179,8 +196,18 @@ export function TimeRangePicker({
     triggerRefs.current[field]?.focus();
   }
 
+  // Availability of the options of the open popover (see `isTimeDisabled`).
+  const current: TimeRangeValue = { startTime, endTime };
+  function isOptionDisabled(column: TimeColumn, value: number): boolean {
+    if (!openField || !isTimeDisabled) return false;
+    if (column === "minute") {
+      return draft.hour !== null && isTimeDisabled(openField, formatTime(draft.hour, value), current);
+    }
+    return minuteOptions(step, draft.minute).every((m) => isTimeDisabled(openField, formatTime(value, m.value), current));
+  }
+
   function handlePick(column: TimeColumn, value: number) {
-    if (!openField) return;
+    if (!openField || isOptionDisabled(column, value)) return;
     const result = applyPick(draft, column, value);
     setDraft(result.draft);
     if (result.next === "confirm") {
@@ -193,7 +220,7 @@ export function TimeRangePicker({
 
   function handleOptionKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const options = Array.from(event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="option"]') ?? []);
-    const target = moveIndex(index, options.length, event.key);
+    const target = moveIndexSkipping(index, options.length, event.key, (i) => options[i].getAttribute("aria-disabled") === "true");
     if (target === null) return;
     event.preventDefault();
     options[target]?.focus();
@@ -201,7 +228,11 @@ export function TimeRangePicker({
 
   function renderColumn(column: TimeColumn, options: { value: number; label: string }[], name: string) {
     const selected = draft[column];
-    const tabbable = active[column] ?? selected ?? options[0]?.value;
+    const disabledOf = new Map(options.map((o) => [o.value, isOptionDisabled(column, o.value)]));
+    // Roving tab stop: the remembered / selected / first option, but never a disabled one.
+    const tabbable = [active[column], selected, options[0]?.value, ...options.map((o) => o.value)].find(
+      (v) => v !== null && v !== undefined && disabledOf.get(v) === false,
+    );
     return (
       <div
         role="listbox"
@@ -212,18 +243,24 @@ export function TimeRangePicker({
         <div className="flex flex-col gap-0.5 p-1">
           {options.map((option, index) => {
             const isSelected = option.value === selected;
+            const disabled = disabledOf.get(option.value) === true;
             return (
               <button
                 key={option.value}
                 type="button"
                 role="option"
                 aria-selected={isSelected}
+                aria-disabled={disabled || undefined}
                 tabIndex={option.value === tabbable ? 0 : -1}
                 onClick={() => handlePick(column, option.value)}
                 onFocus={() => setActive((prev) => ({ ...prev, [column]: option.value }))}
                 onKeyDown={(event) => handleOptionKeyDown(event, index)}
                 className={`flex h-9 w-full shrink-0 items-center justify-center rounded-md text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary ${
-                  isSelected ? "bg-brand-primary font-semibold text-white" : "text-text-primary hover:bg-surface-subtle"
+                  isSelected
+                    ? "bg-brand-primary font-semibold text-white"
+                    : disabled
+                      ? "cursor-not-allowed text-text-tertiary opacity-40"
+                      : "text-text-primary hover:bg-surface-subtle"
                 }`}
               >
                 {option.label}

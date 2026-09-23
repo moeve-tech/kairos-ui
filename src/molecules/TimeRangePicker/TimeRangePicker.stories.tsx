@@ -79,3 +79,25 @@ export const Mobile: Story = {
   render: () => <Controlled initial={{ startTime: "09:00", endTime: "" }} />,
   parameters: { viewport: { defaultViewport: "mobile1" } },
 };
+
+/**
+ * The app decides what is unavailable. Here 12:00-13:59 is booked, so the hours 12 and 13 are
+ * disabled (every minute busy) and the end can never be at or before the chosen start. Arrow
+ * keys skip disabled options. Confirmed values are never validated by the picker.
+ */
+export const WithUnavailableTimes: Story = {
+  render: () => (
+    <Controlled
+      isTimeDisabled={(field, hhmm, current) => {
+        if (hhmm >= "12:00" && hhmm < "14:00") return true;
+        if (field === "end" && current.startTime) {
+          // An end may not cross the booked block that follows the start.
+          if (current.startTime < "12:00" && hhmm >= "12:00") return true;
+          return hhmm <= current.startTime;
+        }
+        return false;
+      }}
+      initial={{ startTime: "09:00", endTime: "" }}
+    />
+  ),
+};

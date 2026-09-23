@@ -216,3 +216,37 @@ export function keyboardTarget(day: string, key: string): string | null {
       return null;
   }
 }
+
+/**
+ * First day AFTER `start` (exclusive) up to `until` (inclusive) for which
+ * `isDisabled` is true; null if there is none. Used to stop a range from
+ * crossing an unavailable day.
+ */
+export function firstDisabledAfter(start: string, until: string, isDisabled: (day: string) => boolean): string | null {
+  let day = addDays(start, 1);
+  while (compareISO(day, until) <= 0) {
+    if (isDisabled(day)) return day;
+    day = addDays(day, 1);
+  }
+  return null;
+}
+
+/**
+ * Like `keyboardTarget`, but never lands on a disabled day: from the raw
+ * target it keeps stepping in the direction of travel (left/right 1 day,
+ * up/down 1 week, PageUp/Down 1 day; Home searches forward and End backward,
+ * both inside the week) until it finds an enabled one. Null if there is none
+ * within reach, so the focus simply stays where it is.
+ */
+export function keyboardTargetSkippingDisabled(day: string, key: string, isDisabled: (day: string) => boolean): string | null {
+  const raw = keyboardTarget(day, key);
+  if (raw === null) return null;
+  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: 1, End: -1, PageUp: -1, PageDown: 1 }[key] as number;
+  const attempts = key === "Home" || key === "End" ? 7 : 366;
+  let candidate = raw;
+  for (let i = 0; i < attempts; i++) {
+    if (!isDisabled(candidate)) return candidate;
+    candidate = addDays(candidate, step);
+  }
+  return null;
+}

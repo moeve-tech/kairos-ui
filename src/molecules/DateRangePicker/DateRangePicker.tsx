@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { ChevronDownIcon } from "../../icons";
 import {
+  addDays,
   addMonthsToMonth,
   buildMonthGrid,
   clampDay,
   compareISO,
   firstDayOfMonth,
+  firstDisabledAfter,
   formatDayAriaLabel,
   formatDisplayDate,
   isDayDisabled,
   isInRange,
   keyboardTarget,
+  keyboardTargetSkippingDisabled,
   lastDayOfMonth,
   monthOf,
   parseISODate,
@@ -43,6 +46,8 @@ export interface DateRangePickerLabels {
   clear: string;
   /** Accessible name of the popover dialog. */
   dialog: string;
+  /** Appended to the accessible name of a day flagged by `isDatePartial`. */
+  partialDay: string;
 }
 
 export interface DateRangePickerProps {
@@ -61,6 +66,25 @@ export interface DateRangePickerProps {
   /** Shown in a field that has no date yet. */
   placeholder?: string;
   labels?: Partial<DateRangePickerLabels>;
+  /**
+   * Extra "not available" days, combined with `min`/`max`: the day is dimmed,
+   * disabled and cannot be selected. The app owns what "unavailable" means.
+   * The range already confirmed in `startDate`/`endDate` is never checked
+   * against it (that value belongs to the parent).
+   */
+  isDateDisabled?: (iso: string) => boolean;
+  /**
+   * Marks a day as partially unavailable: a subtle dot plus `labels.partialDay`
+   * in its accessible name. The day stays selectable.
+   */
+  isDatePartial?: (iso: string) => boolean;
+  /**
+   * Default false. While waiting for the END day, every day after the first
+   * disabled day that follows the chosen start is also disabled (a booking is
+   * one continuous range, so crossing an unavailable day would collide).
+   * Disabled days BEFORE the start do not matter. true = ranges may cross them.
+   */
+  allowRangeOverDisabled?: boolean;
   className?: string;
 }
 
@@ -74,6 +98,7 @@ const DEFAULT_LABELS: DateRangePickerLabels = {
   nextMonth: "Mes siguiente",
   clear: "Limpiar",
   dialog: "Seleccionar rango de fechas",
+  partialDay: "parcialmente ocupado",
 };
 
 // Tailwind's `sm` breakpoint: two months side by side from here up.
@@ -117,6 +142,9 @@ export function DateRangePicker({
   endLabel = "Fecha fin",
   placeholder = "Selecciona",
   labels,
+  isDateDisabled,
+  isDatePartial,
+  allowRangeOverDisabled = false,
   className = "",
 }: DateRangePickerProps) {
   const l: DateRangePickerLabels = { ...DEFAULT_LABELS, ...labels };
@@ -201,10 +229,20 @@ export function DateRangePicker({
 
   let rangeFrom: string | null = parseISODate(shownStart) ? shownStart : null;
   let rangeTo: string | null = parseISODate(shownEnd) ? shownEnd : null;
-  if (pendingStart && previewDay && compareISO(previewDay, pendingStart) >= 0) rangeTo = previewDay;
-
   const months: MonthRef[] = showTwo ? [view, addMonthsToMonth(view, 1)] : [view];
   const today = todayISO();
+
+  // Disabled = outside min/max, or flagged by the app. While choosing the END
+  // (unless allowRangeOverDisabled), everything past the first disabled day
+  // after the start is disabled too: `limit` is that first day.
+  const isBaseDisabled = (day: string) => isDayDisabled(day, min, max) || (isDateDisabled?.(day) ?? false);
+  const limitUntil = (until: string) =>
+    pendingStart && !allowRangeOverDisabled ? firstDisabledAfter(pendingStart, until, isBaseDisabled) : null;
+  const disabledWithLimit = (limit: string | null) => (day: string) =>
+    isBaseDisabled(day) || (limit !== null && compareISO(day, limit) > 0);
+  const isDisabled = disabledWithLimit(limitUntil(lastDayOfMonth(months[months.length - 1])));
+
+  if (pendingStart && previewDay && compareISO(previewDay, pendingStart) >= 0 && !isDisabled(previewDay)) rangeTo = previewDay;
 
   const grids = open
     ? months.map((m) => {
@@ -218,16 +256,16 @@ export function DateRangePicker({
     return !!m && months.some((v) => monthIndex(v) === monthIndex(m));
   };
   const tabbableDay =
-    focusedDay && isShown(focusedDay) && !isDayDisabled(focusedDay, min, max)
+    focusedDay && isShown(focusedDay) && !isDisabled(focusedDay)
       ? focusedDay
-      : (grids.flat(2).find((d): d is string => d !== null && !isDayDisabled(d, min, max)) ?? null);
+      : (grids.flat(2).find((d): d is string => d !== null && !isDisabled(d)) ?? null);
 
   const prevDisabled = !!parseISODate(min) && compareISO(lastDayOfMonth(addMonthsToMonth(view, -1)), min as string) < 0;
   const nextDisabled =
     !!parseISODate(max) && compareISO(firstDayOfMonth(addMonthsToMonth(view, showTwo ? 2 : 1)), max as string) > 0;
 
   function handleDayClick(day: string) {
-    if (isDayDisabled(day, min, max)) return;
+    if (isDisabled(day)) return;
     const result = pickDay(pendingStart, day);
     if (result.kind === "pending") {
       setPendingStart(result.pendingStart);
@@ -239,10 +277,11 @@ export function DateRangePicker({
   }
 
   function handleDayKeyDown(event: KeyboardEvent<HTMLButtonElement>, day: string) {
-    const target = keyboardTarget(day, event.key);
-    if (!target) return;
+    if (!keyboardTarget(day, event.key)) return;
     event.preventDefault();
-    if (isDayDisabled(target, min, max)) return;
+    // The limit is recomputed far enough ahead to judge targets outside the visible months.
+    const target = keyboardTargetSkippingDisabled(day, event.key, disabledWithLimit(limitUntil(addDays(day, 400))));
+    if (!target) return;
     setFocusedDay(target);
     if (!isShown(target)) {
       const m = monthOf(target) as MonthRef;
@@ -340,13 +379,16 @@ export function DateRangePicker({
                   {grids[monthPos].flat().map((day, cellPos) => {
                     if (day === null) return <div key={`empty-${cellPos}`} className={CELL_SIZE} />;
 
-                    const disabled = isDayDisabled(day, min, max);
+                    const disabled = isDisabled(day);
+                    const partial = !disabled && (isDatePartial?.(day) ?? false);
                     const isFrom = day === rangeFrom;
                     const isTo = day === rangeTo;
                     const isEdge = isFrom || isTo;
                     const hasSpan = rangeFrom !== null && rangeTo !== null && rangeFrom !== rangeTo;
                     const inside = hasSpan && isInRange(day, rangeFrom as string, rangeTo as string);
                     const isToday = day === today;
+                    // A confirmed edge that the app's predicate now flags still shows as selected (it is the parent's value).
+                    const dimmed = disabled && !(isEdge && !isDayDisabled(day, min, max));
                     // Which side of the edge circle the tinted band continues to. Inverted
                     // props (start > end) are tolerated: "from" is then the later day.
                     const bandOnRight = hasSpan && isEdge && (compareISO(rangeFrom as string, rangeTo as string) < 0 ? isFrom : isTo);
@@ -361,7 +403,7 @@ export function DateRangePicker({
                           data-date={day}
                           tabIndex={day === tabbableDay ? 0 : -1}
                           disabled={disabled}
-                          aria-label={formatDayAriaLabel(day, l.dayAriaTemplate, l.months, l.weekdaysLong)}
+                          aria-label={`${formatDayAriaLabel(day, l.dayAriaTemplate, l.months, l.weekdaysLong)}${partial ? `, ${l.partialDay}` : ""}`}
                           aria-pressed={day === shownStart || day === shownEnd}
                           aria-current={isToday ? "date" : undefined}
                           onClick={() => handleDayClick(day)}
@@ -372,7 +414,7 @@ export function DateRangePicker({
                             setPreviewDay(day);
                           }}
                           className={`relative ${CELL_SIZE} rounded-full text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-1 ${
-                            disabled
+                            dimmed
                               ? "cursor-not-allowed text-text-tertiary opacity-40"
                               : isEdge
                                 ? "bg-brand-primary font-semibold text-white"
@@ -380,6 +422,12 @@ export function DateRangePicker({
                           } ${isToday && !isEdge ? "font-semibold ring-1 ring-inset ring-brand-primary/60" : ""}`}
                         >
                           {parseISODate(day)?.day}
+                          {partial && (
+                            <span
+                              aria-hidden="true"
+                              className={`absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full ${isEdge ? "bg-white" : "bg-brand-primary"}`}
+                            />
+                          )}
                         </button>
                       </div>
                     );
