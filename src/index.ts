@@ -12,7 +12,7 @@
 //                 (SegmentedTabs, NavItem, StatTile, DecisionFactorRow,
 //                  CompetitorRow, PriceRangeSlider, MiniMapCard,
 //                  WeekdayPicker, SelectableCard, FileDropzone,
-//                  DateRangePicker)
+//                  DateRangePicker, TimeRangePicker)
 //   organisms/  - compose molecule(s)/atom(s) into a full screen section
 //                 (Sidebar, TopBar, ConfirmDialog)
 //
@@ -44,6 +44,7 @@ export * from "./molecules/WeekdayPicker/WeekdayPicker";
 export * from "./molecules/SelectableCard/SelectableCard";
 export * from "./molecules/FileDropzone/FileDropzone";
 export * from "./molecules/DateRangePicker/DateRangePicker";
+export * from "./molecules/TimeRangePicker/TimeRangePicker";
 
 // organisms
 export * from "./organisms/Sidebar/Sidebar";
