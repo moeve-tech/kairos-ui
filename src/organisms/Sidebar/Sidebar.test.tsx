@@ -72,4 +72,14 @@ describe("Sidebar", () => {
     fireEvent.click(screen.getByText("Cerrar Sesión"));
     expect(onLogout).toHaveBeenCalledTimes(1);
   });
+
+  it("omits the station selector entirely when stations is not passed (e.g. a consumer with no station concept)", () => {
+    render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Cliente", role: "Anunciante" }} />);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
+
+  it("also omits it when stations is explicitly an empty array", () => {
+    render(<Sidebar stations={[]} navItems={NAV_ITEMS} user={{ name: "Cliente", role: "Anunciante" }} />);
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  });
 });

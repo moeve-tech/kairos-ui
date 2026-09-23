@@ -27,3 +27,14 @@ export const Default: Story = {
     onLogout: () => {},
   },
 };
+
+/** No station-selector: for a consumer with no "which station am I managing" concept (e.g. an advertiser's own account). */
+export const WithoutStationSelector: Story = {
+  args: {
+    navItems: [
+      { key: "orders", label: "Anuncios", icon: <BoltIcon className="size-5" />, active: true },
+    ],
+    user: { name: "Cliente", role: "Anunciante" },
+    onLogout: () => {},
+  },
+};

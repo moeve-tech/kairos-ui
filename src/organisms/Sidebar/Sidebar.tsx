@@ -24,9 +24,16 @@ export interface SidebarUser {
 export interface SidebarProps {
   /** String simple o un nodo enriquecido (ej. <Logo/> con su wordmark de dos tonos) - ambos se renderizan tal cual junto al ícono. */
   brandName?: ReactNode;
-  stations: SidebarStation[];
-  selectedStationId: string;
-  onSelectStation: (stationId: string) => void;
+  /**
+   * Opcional: el selector de estación es un concepto de operador (gasolinero,
+   * superadmin - "qué estación estoy administrando"), no universal. Omitilo
+   * (o pasá un array vacío) en un consumidor sin ese concepto (ej. la cuenta
+   * de un anunciante) y el bloque completo del selector no se renderiza, en
+   * vez de quedar un dropdown vacío sin opciones.
+   */
+  stations?: SidebarStation[];
+  selectedStationId?: string;
+  onSelectStation?: (stationId: string) => void;
   navItems: SidebarNavItem[];
   user: SidebarUser;
   onLogout?: () => void;
@@ -44,9 +51,9 @@ export interface SidebarProps {
  */
 export function Sidebar({
   brandName = "Redinamic",
-  stations,
-  selectedStationId,
-  onSelectStation,
+  stations = [],
+  selectedStationId = "",
+  onSelectStation = () => {},
   navItems,
   user,
   onLogout,
@@ -61,21 +68,23 @@ export function Sidebar({
           <span className="text-2xl font-semibold tracking-tight text-white">{brandName}</span>
         </div>
 
-        <div className="relative">
-          <MapPinIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white" />
-          <select
-            value={selectedStationId}
-            onChange={(event: ChangeEvent<HTMLSelectElement>) => onSelectStation(event.target.value)}
-            className="w-full appearance-none rounded-xl border border-white/10 bg-white/10 py-2.5 pl-10 pr-9 text-sm font-semibold text-white outline-none"
-          >
-            {stations.map((station) => (
-              <option key={station.id} value={station.id} className="text-text-primary">
-                {station.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-3 -translate-y-1/2 text-white" />
-        </div>
+        {stations.length > 0 && (
+          <div className="relative">
+            <MapPinIcon className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white" />
+            <select
+              value={selectedStationId}
+              onChange={(event: ChangeEvent<HTMLSelectElement>) => onSelectStation(event.target.value)}
+              className="w-full appearance-none rounded-xl border border-white/10 bg-white/10 py-2.5 pl-10 pr-9 text-sm font-semibold text-white outline-none"
+            >
+              {stations.map((station) => (
+                <option key={station.id} value={station.id} className="text-text-primary">
+                  {station.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon className="pointer-events-none absolute right-3 top-1/2 size-3 -translate-y-1/2 text-white" />
+          </div>
+        )}
       </div>
 
       <nav className="flex flex-1 flex-col gap-1 px-4">
