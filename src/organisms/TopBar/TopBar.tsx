@@ -32,6 +32,15 @@ export interface TopBarProps {
   icon?: ReactNode | null;
   /** Tone of the "last updated" status dot. Omitted (default) is "success" - today's fixed green dot. */
   statusTone?: TopBarStatusTone;
+  /**
+   * Omitted (default) keeps today's behavior: `stationName` is rendered as
+   * its own `<span>`. Pass `false` when the screen below already renders
+   * that same text as its own `<h1>` (today's most common case, confirmed
+   * across the 12 existing call sites) - this hides just that `<span>`,
+   * leaving the icon (if any), `middleContent`, the "last updated" block,
+   * the refresh button and the Avatar untouched.
+   */
+  showTitle?: boolean;
 }
 
 /**
@@ -47,6 +56,7 @@ export function TopBar({
   middleContent,
   icon,
   statusTone = "success",
+  showTitle = true,
 }: TopBarProps) {
   const resolvedIcon = icon === undefined ? <MapPinIcon className="size-4 text-text-primary" /> : icon;
 
@@ -55,7 +65,7 @@ export function TopBar({
       <div className="shrink-0">
         <div className={`flex items-center ${resolvedIcon ? "gap-2" : ""}`}>
           {resolvedIcon}
-          <span className="text-sm font-semibold text-text-primary">{stationName}</span>
+          {showTitle && <span className="text-sm font-semibold text-text-primary">{stationName}</span>}
         </div>
         {lastUpdatedLabel !== undefined && (
           <div className="mt-1 flex items-center gap-2">

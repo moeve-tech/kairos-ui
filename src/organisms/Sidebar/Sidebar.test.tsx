@@ -89,4 +89,26 @@ describe("Sidebar", () => {
     render(<Sidebar stations={[]} navItems={NAV_ITEMS} user={{ name: "Cliente", role: "Anunciante" }} />);
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
   });
+
+  it("a long user.name gets truncate + a native title tooltip instead of overflowing the 260px panel", () => {
+    const longName = "cesar.longaddress.advertiser.department@redinamicadvertising.example.com";
+    render(<Sidebar navItems={NAV_ITEMS} user={{ name: longName, role: "Anunciante" }} />);
+    const nameEl = screen.getByText(longName);
+    expect(nameEl).toHaveClass("truncate");
+    expect(nameEl).toHaveAttribute("title", longName);
+  });
+
+  it("a long user.role also gets truncate + title, same as user.name", () => {
+    const longRole = "Supervisor Regional de Operaciones y Mantenimiento de Estaciones";
+    render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: longRole }} />);
+    const roleEl = screen.getByText(longRole);
+    expect(roleEl).toHaveClass("truncate");
+    expect(roleEl).toHaveAttribute("title", longRole);
+  });
+
+  it("the name/role container has min-w-0 so flex doesn't let it push past the Avatar", () => {
+    const { container } = render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
+    const nameEl = screen.getByText("Admin");
+    expect(nameEl.parentElement).toHaveClass("min-w-0");
+  });
 });

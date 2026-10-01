@@ -103,9 +103,13 @@ export function Sidebar({
           <Avatar className="bg-brand-primary text-white">
             <UserCircleIcon className="size-4" />
           </Avatar>
-          <div>
-            <p className="text-sm font-semibold text-white">{user.name}</p>
-            <p className="text-xs text-white/60">{user.role}</p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-white" title={user.name}>
+              {user.name}
+            </p>
+            <p className="truncate text-xs text-white/60" title={user.role}>
+              {user.role}
+            </p>
           </div>
         </div>
         <button
