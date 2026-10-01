@@ -79,6 +79,18 @@ export interface DateRangePickerProps {
    */
   isDatePartial?: (iso: string) => boolean;
   /**
+   * For a range that only runs on some weekdays (e.g. "every Monday"): marks
+   * which days strictly BETWEEN the two edges actually count. Days inside the
+   * range for which this returns false render like an ordinary day outside
+   * it (no tint), instead of the uniform "every day in this span is selected"
+   * band - a continuous highlight is misleading when only 2 of 14 days will
+   * really happen. The two edge days (the exact start/end picked) always
+   * stay fully highlighted regardless, since they are explicit choices, not
+   * inferred from weekday. Omitted (default): every inside day counts, same
+   * as before this prop existed.
+   */
+  isDateActive?: (iso: string) => boolean;
+  /**
    * Default false. While waiting for the END day, every day after the first
    * disabled day that follows the chosen start is also disabled (a booking is
    * one continuous range, so crossing an unavailable day would collide).
@@ -144,6 +156,7 @@ export function DateRangePicker({
   labels,
   isDateDisabled,
   isDatePartial,
+  isDateActive,
   allowRangeOverDisabled = false,
   className = "",
 }: DateRangePickerProps) {
@@ -386,6 +399,7 @@ export function DateRangePicker({
                     const isEdge = isFrom || isTo;
                     const hasSpan = rangeFrom !== null && rangeTo !== null && rangeFrom !== rangeTo;
                     const inside = hasSpan && isInRange(day, rangeFrom as string, rangeTo as string);
+                    const active = inside && (isDateActive ? isDateActive(day) : true);
                     const isToday = day === today;
                     // A confirmed edge that the app's predicate now flags still shows as selected (it is the parent's value).
                     const dimmed = disabled && !(isEdge && !isDayDisabled(day, min, max));
@@ -395,7 +409,7 @@ export function DateRangePicker({
                     const bandOnLeft = hasSpan && isEdge && !bandOnRight;
 
                     return (
-                      <div key={day} className={`relative flex justify-center ${inside && !isEdge ? "bg-brand-primary/10" : ""}`}>
+                      <div key={day} className={`relative flex justify-center ${active && !isEdge ? "bg-brand-primary/10" : ""}`}>
                         {bandOnRight && <span aria-hidden="true" className="absolute inset-y-0 right-0 w-1/2 bg-brand-primary/10" />}
                         {bandOnLeft && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1/2 bg-brand-primary/10" />}
                         <button
@@ -418,7 +432,7 @@ export function DateRangePicker({
                               ? "cursor-not-allowed text-text-tertiary opacity-40"
                               : isEdge
                                 ? "bg-brand-primary font-semibold text-white"
-                                : `text-text-primary ${inside ? "hover:bg-brand-primary/20" : "hover:bg-surface-subtle"}`
+                                : `text-text-primary ${active ? "hover:bg-brand-primary/20" : "hover:bg-surface-subtle"}`
                           } ${isToday && !isEdge ? "font-semibold ring-1 ring-inset ring-brand-primary/60" : ""}`}
                         >
                           {parseISODate(day)?.day}

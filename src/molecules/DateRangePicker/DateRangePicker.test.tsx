@@ -514,6 +514,28 @@ describe("DateRangePicker - partially unavailable days (isDatePartial)", () => {
   });
 });
 
+describe("DateRangePicker - weekday-aware range (isDateActive)", () => {
+  it("omitted: every inside day is tinted, same as before this prop existed", () => {
+    setup({ startDate: "2026-11-12", endDate: "2026-11-16" });
+    openPicker();
+    expect(day("2026-11-14").parentElement).toHaveClass("bg-brand-primary/10");
+  });
+
+  it("an inside day the predicate flags false renders with no tint, like a day outside the range", () => {
+    // 2026-11-14 is a Saturday; only Mondays (isDateActive) count.
+    setup({ startDate: "2026-11-12", endDate: "2026-11-16", isDateActive: (iso) => new Date(iso).getUTCDay() === 1 });
+    openPicker();
+    expect(day("2026-11-14").parentElement).not.toHaveClass("bg-brand-primary/10");
+  });
+
+  it("the two edges stay fully highlighted even when the predicate flags them false", () => {
+    setup({ startDate: "2026-11-12", endDate: "2026-11-16", isDateActive: () => false });
+    openPicker();
+    expect(day("2026-11-12")).toHaveClass("bg-brand-primary", "text-white");
+    expect(day("2026-11-16")).toHaveClass("bg-brand-primary", "text-white");
+  });
+});
+
 describe("DateRangePicker - allowRangeOverDisabled", () => {
   const busy = (...days: string[]) => (iso: string) => days.includes(iso);
 
