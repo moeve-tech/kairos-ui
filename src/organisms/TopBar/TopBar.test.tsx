@@ -20,4 +20,40 @@ describe("TopBar", () => {
     render(<TopBar stationName="X" lastUpdatedLabel="Y" refreshing />);
     expect(screen.getByText("Actualizar datos").closest("button")).toBeDisabled();
   });
+
+  it("with icon omitted, renders the default map pin icon", () => {
+    render(<TopBar stationName="X" lastUpdatedLabel="Y" />);
+    const stationRow = screen.getByText("X").parentElement;
+    expect(stationRow?.querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("with icon=null, renders no icon", () => {
+    render(<TopBar stationName="X" lastUpdatedLabel="Y" icon={null} />);
+    const stationRow = screen.getByText("X").parentElement;
+    expect(stationRow?.querySelector("svg")).not.toBeInTheDocument();
+  });
+
+  it("with a custom icon, renders it instead of the map pin", () => {
+    render(
+      <TopBar
+        stationName="X"
+        lastUpdatedLabel="Y"
+        icon={<span data-testid="custom-icon">★</span>}
+      />,
+    );
+    expect(screen.getByTestId("custom-icon")).toBeInTheDocument();
+  });
+
+  it("with statusTone omitted, the status dot is success (green)", () => {
+    const { container } = render(<TopBar stationName="X" lastUpdatedLabel="Y" />);
+    const dot = container.querySelector("span.rounded-full.size-2");
+    expect(dot).toHaveClass("bg-success-dark");
+  });
+
+  it("with statusTone='neutral', the status dot uses the neutral token", () => {
+    const { container } = render(<TopBar stationName="X" lastUpdatedLabel="Y" statusTone="neutral" />);
+    const dot = container.querySelector("span.rounded-full.size-2");
+    expect(dot).toHaveClass("bg-text-tertiary");
+    expect(dot).not.toHaveClass("bg-success-dark");
+  });
 });
