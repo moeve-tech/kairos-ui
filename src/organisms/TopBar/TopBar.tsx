@@ -16,6 +16,7 @@ export interface TopBarProps {
   stationName: string;
   /** Omitted: no status dot/label is rendered at all (most screens have no real "live" data to report - a fixed decorative "En vivo" is misleading). Pass a string only when it reflects something real (e.g. an actual WebSocket connection state). */
   lastUpdatedLabel?: string;
+  /** Omitted: the "Actualizar datos" button is not rendered at all (no screen today refreshes anything through it - a button that does nothing on click is worse than no button). Pass a handler only when it actually refreshes real data. */
   onRefresh?: () => void;
   refreshing?: boolean;
   /** optional content rendered between the station info and the refresh button - e.g. product tabs. */
@@ -67,14 +68,16 @@ export function TopBar({
       {middleContent}
 
       <div className="flex shrink-0 items-center gap-4">
-        <Button
-          variant="primary"
-          icon={<RefreshIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />}
-          onClick={onRefresh}
-          disabled={refreshing}
-        >
-          Actualizar datos
-        </Button>
+        {onRefresh && (
+          <Button
+            variant="primary"
+            icon={<RefreshIcon className={`size-4 ${refreshing ? "animate-spin" : ""}`} />}
+            onClick={onRefresh}
+            disabled={refreshing}
+          >
+            Actualizar datos
+          </Button>
+        )}
         <Avatar className="bg-brand-primary text-white" size="sm">
           <UserCircleIcon className="size-4" />
         </Avatar>

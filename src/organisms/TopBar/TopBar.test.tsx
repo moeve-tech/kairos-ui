@@ -9,15 +9,21 @@ describe("TopBar", () => {
     expect(screen.getByText("Última actualización: hoy, 14:32")).toBeInTheDocument();
   });
 
-  it("the 'Actualizar datos' button calls onRefresh", () => {
+  it("with onRefresh omitted, the 'Actualizar datos' button is not rendered", () => {
+    render(<TopBar stationName="X" lastUpdatedLabel="Y" />);
+    expect(screen.queryByText("Actualizar datos")).not.toBeInTheDocument();
+  });
+
+  it("with onRefresh provided, the 'Actualizar datos' button is rendered and calls it on click", () => {
     const onRefresh = vi.fn();
     render(<TopBar stationName="X" lastUpdatedLabel="Y" onRefresh={onRefresh} />);
     fireEvent.click(screen.getByText("Actualizar datos"));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it("with refreshing=true, the button becomes disabled", () => {
-    render(<TopBar stationName="X" lastUpdatedLabel="Y" refreshing />);
+  it("with onRefresh provided and refreshing=true, the button is rendered but disabled", () => {
+    const onRefresh = vi.fn();
+    render(<TopBar stationName="X" lastUpdatedLabel="Y" onRefresh={onRefresh} refreshing />);
     expect(screen.getByText("Actualizar datos").closest("button")).toBeDisabled();
   });
 
