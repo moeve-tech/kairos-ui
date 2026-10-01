@@ -56,4 +56,9 @@ describe("TopBar", () => {
     expect(dot).toHaveClass("bg-text-tertiary");
     expect(dot).not.toHaveClass("bg-success-dark");
   });
+
+  it("with lastUpdatedLabel omitted, renders no status dot/label", () => {
+    const { container } = render(<TopBar stationName="X" />);
+    expect(container.querySelector("span.rounded-full.size-2")).not.toBeInTheDocument();
+  });
 });

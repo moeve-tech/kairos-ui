@@ -14,7 +14,8 @@ const STATUS_DOT_CLASSES: Record<TopBarStatusTone, string> = {
 
 export interface TopBarProps {
   stationName: string;
-  lastUpdatedLabel: string;
+  /** Omitted: no status dot/label is rendered at all (most screens have no real "live" data to report - a fixed decorative "En vivo" is misleading). Pass a string only when it reflects something real (e.g. an actual WebSocket connection state). */
+  lastUpdatedLabel?: string;
   onRefresh?: () => void;
   refreshing?: boolean;
   /** optional content rendered between the station info and the refresh button - e.g. product tabs. */
@@ -55,10 +56,12 @@ export function TopBar({
           {resolvedIcon}
           <span className="text-sm font-semibold text-text-primary">{stationName}</span>
         </div>
-        <div className="mt-1 flex items-center gap-2">
-          <span className={`size-2 rounded-full ${STATUS_DOT_CLASSES[statusTone]}`} />
-          <span className="text-xs font-medium text-text-secondary">{lastUpdatedLabel}</span>
-        </div>
+        {lastUpdatedLabel !== undefined && (
+          <div className="mt-1 flex items-center gap-2">
+            <span className={`size-2 rounded-full ${STATUS_DOT_CLASSES[statusTone]}`} />
+            <span className="text-xs font-medium text-text-secondary">{lastUpdatedLabel}</span>
+          </div>
+        )}
       </div>
 
       {middleContent}
