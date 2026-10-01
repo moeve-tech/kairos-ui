@@ -67,4 +67,29 @@ describe("TopBar", () => {
     const { container } = render(<TopBar stationName="X" />);
     expect(container.querySelector("span.rounded-full.size-2")).not.toBeInTheDocument();
   });
+
+  it("with showTitle omitted, still renders stationName as its own span (unchanged default)", () => {
+    render(<TopBar stationName="CDMX - Estación Central" lastUpdatedLabel="Y" />);
+    expect(screen.getByText("CDMX - Estación Central")).toBeInTheDocument();
+  });
+
+  it("with showTitle=false, hides stationName but keeps the icon, middleContent and the Avatar", () => {
+    render(
+      <TopBar
+        stationName="CDMX - Estación Central"
+        lastUpdatedLabel="Y"
+        middleContent={<span data-testid="middle">tabs</span>}
+        showTitle={false}
+      />,
+    );
+    expect(screen.queryByText("CDMX - Estación Central")).not.toBeInTheDocument();
+    expect(screen.getByTestId("middle")).toBeInTheDocument();
+    expect(document.querySelector("header svg")).toBeInTheDocument(); // default MapPinIcon still renders
+  });
+
+  it("with showTitle=false and onRefresh provided, the refresh button still renders", () => {
+    const onRefresh = vi.fn();
+    render(<TopBar stationName="X" lastUpdatedLabel="Y" onRefresh={onRefresh} showTitle={false} />);
+    expect(screen.getByText("Actualizar datos")).toBeInTheDocument();
+  });
 });
