@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "../../atoms/Button/Button";
-import { Avatar } from "../../atoms/Avatar/Avatar";
-import { MapPinIcon, RefreshIcon, UserCircleIcon } from "../../icons";
+import { RefreshIcon } from "../../icons";
 
 export type TopBarStatusTone = "success" | "neutral";
 
@@ -13,6 +12,11 @@ const STATUS_DOT_CLASSES: Record<TopBarStatusTone, string> = {
 };
 
 export interface TopBarProps {
+  /**
+   * Not rendered as visible text anymore - the screen's own `<h1>` is the
+   * single source of the visible title. Used only as the `aria-label` of
+   * this `<header>`, so the bar keeps an accessible name for screen readers.
+   */
   stationName: string;
   /** Omitted: no status dot/label is rendered at all (most screens have no real "live" data to report - a fixed decorative "En vivo" is misleading). Pass a string only when it reflects something real (e.g. an actual WebSocket connection state). */
   lastUpdatedLabel?: string;
@@ -21,32 +25,16 @@ export interface TopBarProps {
   refreshing?: boolean;
   /** optional content rendered between the station info and the refresh button - e.g. product tabs. */
   middleContent?: ReactNode;
-  /**
-   * Icon rendered next to `stationName`. Omitted (default) keeps today's
-   * `MapPinIcon`; pass `null` to render no icon at all (e.g. when
-   * `stationName` is a generic screen title, not an actual station); pass
-   * any other node to render that instead - bring your own size/color
-   * (e.g. `className="size-4 text-text-primary"`), same convention as
-   * `Button`'s `icon` prop.
-   */
-  icon?: ReactNode | null;
   /** Tone of the "last updated" status dot. Omitted (default) is "success" - today's fixed green dot. */
   statusTone?: TopBarStatusTone;
-  /**
-   * Omitted (default) keeps today's behavior: `stationName` is rendered as
-   * its own `<span>`. Pass `false` when the screen below already renders
-   * that same text as its own `<h1>` (today's most common case, confirmed
-   * across the 12 existing call sites) - this hides just that `<span>`,
-   * leaving the icon (if any), `middleContent`, the "last updated" block,
-   * the refresh button and the Avatar untouched.
-   */
-  showTitle?: boolean;
 }
 
 /**
- * The fixed top bar (80px, with blur), to the right of the sidebar.
- * It only knows the active station's name and the "last updated"
- * state - the concrete data comes from the screen that uses it.
+ * The fixed top bar (56px, with blur), to the right of the sidebar. It no
+ * longer renders a visible title or an identity avatar - the screen's own
+ * `<h1>` is the single source of the title, and the Sidebar is the single
+ * source of session identity. The only real content this bar renders is the
+ * "last updated" status (when passed) and the optional refresh button.
  */
 export function TopBar({
   stationName,
@@ -54,21 +42,16 @@ export function TopBar({
   onRefresh,
   refreshing = false,
   middleContent,
-  icon,
   statusTone = "success",
-  showTitle = true,
 }: TopBarProps) {
-  const resolvedIcon = icon === undefined ? <MapPinIcon className="size-4 text-text-primary" /> : icon;
-
   return (
-    <header className="fixed left-[260px] right-0 top-0 z-10 flex h-20 items-center justify-between gap-4 bg-surface-page/80 px-6 shadow-header backdrop-blur-md">
+    <header
+      aria-label={stationName}
+      className="fixed left-[260px] right-0 top-0 z-10 flex h-14 items-center justify-between gap-4 bg-surface-page/80 px-6 shadow-header backdrop-blur-md"
+    >
       <div className="shrink-0">
-        <div className={`flex items-center ${resolvedIcon ? "gap-2" : ""}`}>
-          {resolvedIcon}
-          {showTitle && <span className="text-sm font-semibold text-text-primary">{stationName}</span>}
-        </div>
         {lastUpdatedLabel !== undefined && (
-          <div className="mt-1 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <span className={`size-2 rounded-full ${STATUS_DOT_CLASSES[statusTone]}`} />
             <span className="text-xs font-medium text-text-secondary">{lastUpdatedLabel}</span>
           </div>
@@ -88,9 +71,6 @@ export function TopBar({
             Actualizar datos
           </Button>
         )}
-        <Avatar className="bg-brand-primary text-white" size="sm">
-          <UserCircleIcon className="size-4" />
-        </Avatar>
       </div>
     </header>
   );

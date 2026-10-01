@@ -3,10 +3,21 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { TopBar } from "./TopBar";
 
 describe("TopBar", () => {
-  it("renders the station name and the last-updated label", () => {
+  it("renders the last-updated label but no visible stationName text", () => {
     render(<TopBar stationName="CDMX - Estación Central" lastUpdatedLabel="Última actualización: hoy, 14:32" />);
-    expect(screen.getByText("CDMX - Estación Central")).toBeInTheDocument();
     expect(screen.getByText("Última actualización: hoy, 14:32")).toBeInTheDocument();
+    expect(screen.queryByText("CDMX - Estación Central")).not.toBeInTheDocument();
+  });
+
+  it("exposes stationName as the header's accessible name (aria-label)", () => {
+    render(<TopBar stationName="CDMX - Estación Central" lastUpdatedLabel="Y" />);
+    expect(screen.getByRole("banner", { name: "CDMX - Estación Central" })).toBeInTheDocument();
+  });
+
+  it("does not render an Avatar/identity element", () => {
+    const { container } = render(<TopBar stationName="X" lastUpdatedLabel="Y" />);
+    // Avatar renders a rounded-full circle distinct from the status dot (size-8/size-10 vs size-2).
+    expect(container.querySelector(".size-8, .size-10")).not.toBeInTheDocument();
   });
 
   it("with onRefresh omitted, the 'Actualizar datos' button is not rendered", () => {
@@ -27,29 +38,6 @@ describe("TopBar", () => {
     expect(screen.getByText("Actualizar datos").closest("button")).toBeDisabled();
   });
 
-  it("with icon omitted, renders the default map pin icon", () => {
-    render(<TopBar stationName="X" lastUpdatedLabel="Y" />);
-    const stationRow = screen.getByText("X").parentElement;
-    expect(stationRow?.querySelector("svg")).toBeInTheDocument();
-  });
-
-  it("with icon=null, renders no icon", () => {
-    render(<TopBar stationName="X" lastUpdatedLabel="Y" icon={null} />);
-    const stationRow = screen.getByText("X").parentElement;
-    expect(stationRow?.querySelector("svg")).not.toBeInTheDocument();
-  });
-
-  it("with a custom icon, renders it instead of the map pin", () => {
-    render(
-      <TopBar
-        stationName="X"
-        lastUpdatedLabel="Y"
-        icon={<span data-testid="custom-icon">★</span>}
-      />,
-    );
-    expect(screen.getByTestId("custom-icon")).toBeInTheDocument();
-  });
-
   it("with statusTone omitted, the status dot is success (green)", () => {
     const { container } = render(<TopBar stationName="X" lastUpdatedLabel="Y" />);
     const dot = container.querySelector("span.rounded-full.size-2");
@@ -68,28 +56,22 @@ describe("TopBar", () => {
     expect(container.querySelector("span.rounded-full.size-2")).not.toBeInTheDocument();
   });
 
-  it("with showTitle omitted, still renders stationName as its own span (unchanged default)", () => {
-    render(<TopBar stationName="CDMX - Estación Central" lastUpdatedLabel="Y" />);
-    expect(screen.getByText("CDMX - Estación Central")).toBeInTheDocument();
-  });
-
-  it("with showTitle=false, hides stationName but keeps the icon, middleContent and the Avatar", () => {
+  it("renders middleContent alongside the status block and refresh button", () => {
+    const onRefresh = vi.fn();
     render(
       <TopBar
-        stationName="CDMX - Estación Central"
+        stationName="X"
         lastUpdatedLabel="Y"
+        onRefresh={onRefresh}
         middleContent={<span data-testid="middle">tabs</span>}
-        showTitle={false}
       />,
     );
-    expect(screen.queryByText("CDMX - Estación Central")).not.toBeInTheDocument();
     expect(screen.getByTestId("middle")).toBeInTheDocument();
-    expect(document.querySelector("header svg")).toBeInTheDocument(); // default MapPinIcon still renders
+    expect(screen.getByText("Actualizar datos")).toBeInTheDocument();
   });
 
-  it("with showTitle=false and onRefresh provided, the refresh button still renders", () => {
-    const onRefresh = vi.fn();
-    render(<TopBar stationName="X" lastUpdatedLabel="Y" onRefresh={onRefresh} showTitle={false} />);
-    expect(screen.getByText("Actualizar datos")).toBeInTheDocument();
+  it("the header is 56px tall (h-14)", () => {
+    const { container } = render(<TopBar stationName="X" />);
+    expect(container.querySelector("header")).toHaveClass("h-14");
   });
 });
