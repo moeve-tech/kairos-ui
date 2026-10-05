@@ -137,8 +137,14 @@ export function TrendDownIcon(props: IconProps) {
 }
 
 export function FuelIcon(props: IconProps) {
+  // The hand-drawn paths below aren't centered in a plain 0 0 24 24 viewBox
+  // (their ink spans x:[2,19] y:[4,22], so the geometric center is (10.5,
+  // 13), not (12, 12)). Shifting the viewBox origin to match that center
+  // keeps the glyph visually centered inside round containers (e.g. map
+  // pins) without altering any path point, which would subtly change the
+  // drawing.
   return (
-    <svg {...base} stroke="currentColor" {...props}>
+    <svg {...base} viewBox="-1.5 1 24 24" stroke="currentColor" {...props}>
       <path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
       <path d="M3 12h10" />
       <path d="M13 7h2l3.5 3.5a1.5 1.5 0 0 1 .5 1.1V17a1.5 1.5 0 0 1-3 0v-1" />
