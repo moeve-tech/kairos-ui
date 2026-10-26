@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { Sidebar } from "./Sidebar";
 
 const STATIONS = [
@@ -110,5 +110,44 @@ describe("Sidebar", () => {
     const { container } = render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
     const nameEl = screen.getByText("Admin");
     expect(nameEl.parentElement).toHaveClass("min-w-0");
+  });
+
+  describe("mobile drawer", () => {
+    it("starts closed: no close button and no backdrop in the document", () => {
+      render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
+      expect(screen.queryByLabelText("Cerrar menú")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("sidebar-mobile-backdrop")).not.toBeInTheDocument();
+    });
+
+    it("clicking the hamburger button opens the drawer (backdrop + close button appear)", () => {
+      render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
+      fireEvent.click(screen.getByLabelText("Abrir menú"));
+      expect(screen.getByTestId("sidebar-mobile-backdrop")).toBeInTheDocument();
+      expect(screen.getByLabelText("Cerrar menú")).toBeInTheDocument();
+    });
+
+    it("clicking the backdrop closes the drawer", () => {
+      render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
+      fireEvent.click(screen.getByLabelText("Abrir menú"));
+      fireEvent.click(screen.getByTestId("sidebar-mobile-backdrop"));
+      expect(screen.queryByTestId("sidebar-mobile-backdrop")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Cerrar menú")).not.toBeInTheDocument();
+    });
+
+    it("clicking the X button closes the drawer", () => {
+      render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
+      fireEvent.click(screen.getByLabelText("Abrir menú"));
+      fireEvent.click(screen.getByLabelText("Cerrar menú"));
+      expect(screen.queryByTestId("sidebar-mobile-backdrop")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("Cerrar menú")).not.toBeInTheDocument();
+    });
+
+    it("clicking a nav item inside the open drawer closes it (navigate-away collapses the menu)", () => {
+      render(<Sidebar navItems={NAV_ITEMS} user={{ name: "Admin", role: "Supervisor" }} />);
+      fireEvent.click(screen.getByLabelText("Abrir menú"));
+      const drawer = screen.getByTestId("sidebar-mobile-backdrop").parentElement as HTMLElement;
+      fireEvent.click(within(drawer).getByText("Pricing"));
+      expect(screen.queryByTestId("sidebar-mobile-backdrop")).not.toBeInTheDocument();
+    });
   });
 });

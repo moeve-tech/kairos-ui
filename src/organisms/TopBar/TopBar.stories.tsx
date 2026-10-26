@@ -21,3 +21,9 @@ export const Default: Story = {
 export const Refreshing: Story = {
   args: { ...Default.args, refreshing: true },
 };
+
+/** Below `md` the left padding leaves room for the Sidebar's hamburger button that sits fixed on top of it. */
+export const Mobile: Story = {
+  args: Default.args,
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};

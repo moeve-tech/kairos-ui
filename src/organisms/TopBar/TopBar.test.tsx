@@ -74,4 +74,11 @@ describe("TopBar", () => {
     const { container } = render(<TopBar stationName="X" />);
     expect(container.querySelector("header")).toHaveClass("h-14");
   });
+
+  it("reserves left space on mobile for the Sidebar's hamburger button, back to the normal padding on md+", () => {
+    const { container } = render(<TopBar stationName="X" />);
+    const header = container.querySelector("header");
+    expect(header).toHaveClass("pl-[72px]");
+    expect(header).toHaveClass("md:px-6");
+  });
 });

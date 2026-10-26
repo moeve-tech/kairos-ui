@@ -47,7 +47,7 @@ export function TopBar({
   return (
     <header
       aria-label={stationName}
-      className="fixed left-[260px] right-0 top-0 z-10 flex h-14 items-center justify-between gap-4 bg-surface-page/80 px-6 shadow-header backdrop-blur-md"
+      className="fixed left-0 right-0 top-0 z-10 flex h-14 items-center justify-between gap-4 bg-surface-page/80 pl-[72px] pr-6 shadow-header backdrop-blur-md md:left-[260px] md:px-6"
     >
       <div className="shrink-0">
         {lastUpdatedLabel !== undefined && (
