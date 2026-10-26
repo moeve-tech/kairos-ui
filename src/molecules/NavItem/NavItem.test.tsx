@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { NavItem } from "./NavItem";
 
 describe("NavItem", () => {
@@ -24,5 +24,17 @@ describe("NavItem", () => {
   it("when active=false (default) uses the dim text", () => {
     render(<NavItem icon={<span>ico</span>} label="Pricing" />);
     expect(screen.getByRole("link")).toHaveClass("text-white/70");
+  });
+
+  it("calls onClick when provided (e.g. to close a mobile nav drawer on navigate)", () => {
+    const onClick = vi.fn();
+    render(<NavItem icon={<span>ico</span>} label="Pricing" onClick={onClick} />);
+    fireEvent.click(screen.getByRole("link"));
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders fine with no onClick at all (it's optional)", () => {
+    render(<NavItem icon={<span>ico</span>} label="Pricing" />);
+    expect(() => fireEvent.click(screen.getByRole("link"))).not.toThrow();
   });
 });

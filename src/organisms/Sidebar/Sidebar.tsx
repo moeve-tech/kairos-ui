@@ -1,7 +1,8 @@
+import { useState } from "react";
 import type { ReactNode, ChangeEvent } from "react";
 import { NavItem } from "../../molecules/NavItem/NavItem";
 import { Avatar } from "../../atoms/Avatar/Avatar";
-import { BoltIcon, MapPinIcon, ChevronDownIcon, UserCircleIcon, LogOutIcon } from "../../icons";
+import { BoltIcon, MapPinIcon, ChevronDownIcon, UserCircleIcon, LogOutIcon, MenuIcon, XIcon } from "../../icons";
 
 export interface SidebarStation {
   id: string;
@@ -50,6 +51,12 @@ export interface SidebarProps {
  * native <select> instead of a custom dropdown - it's the simplest and
  * most accessible option; it can be replaced by a more elaborate menu
  * without touching the rest of the screen.
+ *
+ * Below `md` the fixed panel has no room to live permanently, so it
+ * collapses into a hamburger button (top-left, same height as the
+ * TopBar) that opens this same content as a drawer over a backdrop.
+ * That open/close state is internal (uncontrolled) - no new required
+ * prop - since no consumer needs to drive it from outside today.
  */
 export function Sidebar({
   brandName = "Redinamic",
@@ -61,8 +68,11 @@ export function Sidebar({
   user,
   onLogout,
 }: SidebarProps) {
-  return (
-    <aside className="fixed left-0 top-0 flex h-screen w-[260px] flex-col justify-between bg-brand-sidebar pb-2 pt-8">
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const closeMobile = () => setMobileOpen(false);
+
+  const content = (
+    <>
       <div className="flex flex-col gap-6 px-4 pb-6">
         <div className="flex items-center gap-3 px-2">
           {showLogoMark && (
@@ -94,7 +104,14 @@ export function Sidebar({
 
       <nav className="flex flex-1 flex-col gap-1 px-4">
         {navItems.map((item) => (
-          <NavItem key={item.key} icon={item.icon} label={item.label} active={item.active} href={item.href} />
+          <NavItem
+            key={item.key}
+            icon={item.icon}
+            label={item.label}
+            active={item.active}
+            href={item.href}
+            onClick={closeMobile}
+          />
         ))}
       </nav>
 
@@ -121,6 +138,45 @@ export function Sidebar({
           Cerrar Sesión
         </button>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        aria-label="Abrir menú"
+        className="fixed left-0 top-0 z-20 flex h-14 w-14 items-center justify-center bg-brand-sidebar text-white md:hidden"
+      >
+        <MenuIcon className="size-6" />
+      </button>
+
+      <aside className="fixed left-0 top-0 hidden h-screen w-[260px] flex-col justify-between bg-brand-sidebar pb-2 pt-8 md:flex">
+        {content}
+      </aside>
+
+      {mobileOpen && (
+        <div className="fixed inset-0 z-30 md:hidden">
+          <div
+            data-testid="sidebar-mobile-backdrop"
+            aria-hidden="true"
+            onClick={closeMobile}
+            className="absolute inset-0 bg-black/50"
+          />
+          <aside className="relative flex h-screen w-[260px] flex-col justify-between bg-brand-sidebar pb-2 pt-8">
+            <button
+              type="button"
+              onClick={closeMobile}
+              aria-label="Cerrar menú"
+              className="absolute right-3 top-3 text-white/70 transition-colors hover:text-white"
+            >
+              <XIcon className="size-5" />
+            </button>
+            {content}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

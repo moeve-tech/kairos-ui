@@ -38,3 +38,13 @@ export const WithoutStationSelector: Story = {
     onLogout: () => {},
   },
 };
+
+/**
+ * Below `md` the fixed panel collapses into a hamburger button (top-left);
+ * clicking it opens the same content as a drawer over a backdrop (open state
+ * is internal to the component, so click the button in the canvas to see it).
+ */
+export const Mobile: Story = {
+  args: Default.args,
+  parameters: { viewport: { defaultViewport: "mobile1" } },
+};
