@@ -1,5 +1,6 @@
 import type { Config } from "tailwindcss";
 import { colors } from "./src/tokens/colors";
+import { fontFamily } from "./src/tokens/typography";
 
 /**
  * Preset de Tailwind de la librería - lo consume apps/web (y cualquier
@@ -20,7 +21,7 @@ const preset: Partial<Config> = {
         border: colors.border,
       },
       fontFamily: {
-        sans: ["var(--font-hanken)", "Arial", "sans-serif"],
+        sans: fontFamily.sans,
       },
       boxShadow: {
         card: "0px 4px 6px -1px rgba(0,0,0,0.1), 0px 2px 4px -2px rgba(0,0,0,0.1)",

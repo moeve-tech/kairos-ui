@@ -79,6 +79,25 @@ module.exports = {
 };
 ```
 
+### Typography (Moeve Sans)
+
+The preset's `font-sans` matches moeve.es: `"Moeve Sans", moevelight, "Century Gothic", Helvetica, Arial, sans-serif` (see `src/tokens/typography.ts`).
+
+Moeve Sans is Moeve's proprietary corporate typeface, so **this package does not ship the font files**. Each app registers it with its own `@font-face`, using the font files provided by the brand team, under a single family name with one rule per weight:
+
+```css
+@font-face {
+  font-family: "Moeve Sans";
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/MoeveSans/MoeveSans-Light.woff2") format("woff2");
+}
+/* repeat for 400 (Regular), 500 (Medium), 700 (Bold) with their files */
+```
+
+Without those files, browsers fall back to Century Gothic (installed on Windows/macOS), the same fallback the official site uses.
+
 ### Local development against an unpublished change
 
 While iterating on a change here before publishing a new version, a consumer can still point at this folder instead of the registry:
